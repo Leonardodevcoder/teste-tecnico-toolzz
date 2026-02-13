@@ -8,7 +8,7 @@ COPY package*.json ./
 COPY nx.json ./
 
 # Install dependencies (including dev deps)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -36,7 +36,7 @@ COPY --from=builder /app/prisma ./prisma
 
 # Install ONLY production dependencies (to keep image small)
 # Native modules like argon2 might need to rebuild or be compatible
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy generated Prisma Client (which is native and built in builder)
 # This is crucial because `prisma generate` creates binaries in node_modules/.prisma
