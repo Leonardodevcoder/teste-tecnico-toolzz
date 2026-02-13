@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database (PostgreSQL)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: toolzz-db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: toolzz_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d toolzz_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Backend (API)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: toolzz-api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/toolzz_db?schema=public"
+      JWT_SECRET: "dev-secret-key-change-in-prod"
+      PORT: 3000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - toolzz-network
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Web)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: toolzz-web
+    restart: always
+    ports:
+      - "4200:3000" # Mapeia porta 3000 do container para 4200 do host
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:3000/api"
+      NODE_ENV: production
+    depends_on:
+      - api
+    networks:
+      - toolzz-network
+
+volumes:
+  postgres_data:
+
+networks:
+  toolzz-network:
+    driver: bridge

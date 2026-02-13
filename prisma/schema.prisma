@@ -1,0 +1,74 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  
+  name      String?  
+  role      Role     @default(STUDENT)
+  avatarUrl String?  
+  
+  // OAuth2 (Google)
+  googleId  String?  @unique // ID do Google
+  
+  // 2FA (TOTP)
+  twoFactorSecret  String? // Segredo TOTP (criptografado)
+  twoFactorEnabled Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos do Chat
+  messages  Message[] // Mensagens enviadas
+  rooms     Room[]    // Salas em que participa
+}
+
+// Papéis de acesso
+enum Role {
+  ADMIN    // Administrador total
+  TEACHER  // Professor/Moderador
+  STUDENT  // Aluno padrão
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  name      String?  
+  type      RoomType @default(DIRECT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Participantes da Sala
+  users     User[]
+
+  // Mensagens nesta Sala
+  messages  Message[]
+}
+
+// Tipos de sala
+enum RoomType {
+  DIRECT  // 1x1 (Conversa privada)
+  GROUP   // Grupo de estudos (Vários participantes)
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String   
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Quem enviou (Relação User -> Message)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  // Onde enviou (Relação Room -> Message)
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+}
